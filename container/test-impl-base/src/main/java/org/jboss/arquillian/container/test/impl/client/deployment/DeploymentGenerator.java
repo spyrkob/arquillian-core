@@ -19,6 +19,8 @@ package org.jboss.arquillian.container.test.impl.client.deployment;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+
 import org.jboss.arquillian.container.spi.Container;
 import org.jboss.arquillian.container.spi.ContainerRegistry;
 import org.jboss.arquillian.container.spi.client.deployment.Deployment;
@@ -47,7 +49,11 @@ import org.jboss.arquillian.core.spi.ServiceLoader;
 import org.jboss.arquillian.test.spi.TestClass;
 import org.jboss.arquillian.test.spi.annotation.ClassScoped;
 import org.jboss.shrinkwrap.api.Archive;
+import org.jboss.shrinkwrap.api.ArchivePath;
+import org.jboss.shrinkwrap.api.Node;
+import org.jboss.shrinkwrap.api.asset.ArchiveAsset;
 import org.jboss.shrinkwrap.api.container.ClassContainer;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
 
 /**
  * DeploymentGenerator
@@ -173,7 +179,16 @@ public class DeploymentGenerator {
                 // this should be made more reliable, does not work with e.g. a EnterpriseArchive
                 if (ClassContainer.class.isInstance(applicationArchive)) {
                     ClassContainer<?> classContainer = ClassContainer.class.cast(applicationArchive);
-                    classContainer.addClass(testCase.getJavaClass());
+                    if (classContainer instanceof WebArchive) {
+                        Map<ArchivePath, Node> content = ((WebArchive) classContainer).getContent();
+                        for (ArchivePath archivePath : content.keySet()) {
+                            if (content.get(archivePath).getAsset() instanceof ArchiveAsset) {
+                                if (!((ArchiveAsset)content.get(archivePath).getAsset()).getArchive().contains("/" + testCase.getJavaClass().getCanonicalName().replaceAll("\\.","/") + ".class")) {
+                                    classContainer.addClass(testCase.getJavaClass());
+                                }
+                            }
+                        }
+                    }
                     addAdditionalObserverClassesIfPresent(classContainer, testCase.getJavaClass());
                 }
             } catch (UnsupportedOperationException e) {
